@@ -21,7 +21,8 @@ The Service sends the preset byte codes and subscribes to the Muse BLE Gatt noti
 
 ## Todo
 
-Get streaming going (BLE -> IP converter)a
+- Get streaming going (BLE -> IP converter)
+- networking is currently a bit hacky. Make a service that handles net connection and call the AsyncTask from the service
 
 ## Pre-requisites
 

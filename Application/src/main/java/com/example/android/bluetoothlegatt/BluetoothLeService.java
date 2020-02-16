@@ -30,10 +30,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
+import android.provider.ContactsContract;
 import android.util.Log;
 
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.net.DatagramSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -71,6 +73,11 @@ public class BluetoothLeService extends Service {
             UUID.fromString(SampleGattAttributes.HEART_RATE_MEASUREMENT);
 
     public Boolean lock = false; //check if bluetooth writer/reader is locked before trying to read/write
+    public int attempts = 0; //number of attempts to keep retrying connection to bluetooth
+    public Boolean tryStill = false; //should we keep retrying to connect if attempt is not over max tries?
+
+    public DatagramSocket udpSocket; //creating the socket here... this should be moved to its own service for understandability and to expand this to TCP
+
 
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
@@ -79,6 +86,7 @@ public class BluetoothLeService extends Service {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             String intentAction;
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                tryStill = false;
                 intentAction = ACTION_GATT_CONNECTED;
                 mConnectionState = STATE_CONNECTED;
                 broadcastUpdate(intentAction);
@@ -88,10 +96,14 @@ public class BluetoothLeService extends Service {
                         mBluetoothGatt.discoverServices());
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                attempts++;
                 intentAction = ACTION_GATT_DISCONNECTED;
                 mConnectionState = STATE_DISCONNECTED;
                 Log.i(TAG, "Disconnected from GATT server.");
-                broadcastUpdate(intentAction);
+                if (attempts < 3 && tryStill.equals(true)) {
+                    oldConn(mBluetoothDeviceAddress);
+                    broadcastUpdate(intentAction);
+                }
             }
         }
 
@@ -127,8 +139,15 @@ public class BluetoothLeService extends Service {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt,
                                             BluetoothGattCharacteristic characteristic) {
-            Log.d("UUID", "notified ****************************************88");
             broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
+            byte [] packet = characteristic.getValue();
+            Log.d("DATA", packet.toString());
+            Log.d("DATA", Integer.toString(packet.length));
+            Streamer streamer = new Streamer();
+            Object[] obj = new Object[2];
+            obj[0] = udpSocket;
+            obj[1] = packet;
+            streamer.execute(obj);
         }
     };
 
@@ -177,6 +196,13 @@ public class BluetoothLeService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
+        //create socket connection
+        try {
+            udpSocket = new DatagramSocket(9999);
+        } catch (Exception e){
+            Log.e("UUID", e.toString());
+        }
+
         return mBinder;
     }
 
@@ -197,6 +223,7 @@ public class BluetoothLeService extends Service {
      * @return Return true if the initialization is successful.
      */
     public boolean initialize() {
+
         // For API level 18 and above, get a reference to BluetoothAdapter through
         // BluetoothManager.
         if (mBluetoothManager == null) {
@@ -227,11 +254,38 @@ public class BluetoothLeService extends Service {
      *         callback.
      */
     public boolean connect(final String address) {
+        Boolean result;
+
         if (mBluetoothAdapter == null || address == null) {
             Log.w(TAG, "BluetoothAdapter not initialized or unspecified address.");
             return false;
         }
 
+        result = oldConn(address); //first try to connect with an old connection
+
+        if (result.equals(true)){
+            return true;
+        }
+
+        final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+        if (device == null) {
+            Log.w(TAG, "Device not found.  Unable to connect.");
+            return false;
+        }
+
+        // We want to directly connect to the device, so we are setting the autoConnect
+        // parameter to false.
+        mBluetoothGatt = device.connectGatt(this, false, mGattCallback);
+        Log.d(TAG, "Trying to create a new connection.");
+        mBluetoothDeviceAddress = address;
+        mConnectionState = STATE_CONNECTING;
+        attempts = 0; //set attempts to 0 so the callback will keep retrying connection (3 times)
+        tryStill = true;
+
+        return true;
+    }
+
+    public boolean oldConn(final String address){
         // Previously connected device.  Try to reconnect.
         if (mBluetoothDeviceAddress != null && address.equals(mBluetoothDeviceAddress)
                 && mBluetoothGatt != null) {
@@ -243,20 +297,7 @@ public class BluetoothLeService extends Service {
                 return false;
             }
         }
-
-        final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
-        if (device == null) {
-            Log.w(TAG, "Device not found.  Unable to connect.");
-            return false;
-        }
-        // We want to directly connect to the device, so we are setting the autoConnect
-        // parameter to false.
-        mBluetoothGatt = device.connectGatt(this, false, mGattCallback);
-        Log.d(TAG, "Trying to create a new connection.");
-        mBluetoothDeviceAddress = address;
-        mConnectionState = STATE_CONNECTING;
-
-        return true;
+        return false;
     }
 
     public void museSetup(){
