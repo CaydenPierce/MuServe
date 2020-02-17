@@ -72,6 +72,18 @@ public class BluetoothLeService extends Service {
     public final static UUID UUID_HEART_RATE_MEASUREMENT =
             UUID.fromString(SampleGattAttributes.HEART_RATE_MEASUREMENT);
 
+    //list of chars we want to write to
+    //sample are received in this order : 44, 41, 38, 32, 35
+    public String charStreamUUID = "273e0001-4c4d-454d-96be-f03bac821358"; //write preset to this
+
+    public Object [] charTP9UUID = {"273e0003-4c4d-454d-96be-f03bac821358", 44};
+    public Object [] charAF7UUID = {"273e0004-4c4d-454d-96be-f03bac821358", 41};
+    public Object [] charAF8UUID = {"273e0005-4c4d-454d-96be-f03bac821358", 38};
+    public Object [] charTP10UUID = {"273e0006-4c4d-454d-96be-f03bac821358", 32};
+    public Object [] charRightAuxUUID = {"273e0007-4c4d-454d-96be-f03bac821358", 35};
+
+    public Object [][] elecChars = {charAF7UUID, charAF8UUID, charRightAuxUUID, charTP9UUID, charTP10UUID};
+
     public Boolean lock = false; //check if bluetooth writer/reader is locked before trying to read/write
     public int attempts = 0; //number of attempts to keep retrying connection to bluetooth
     public Boolean tryStill = false; //should we keep retrying to connect if attempt is not over max tries?
@@ -140,7 +152,18 @@ public class BluetoothLeService extends Service {
         public void onCharacteristicChanged(BluetoothGatt gatt,
                                             BluetoothGattCharacteristic characteristic) {
             broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
-            byte [] packet = characteristic.getValue();
+            byte [] values = characteristic.getValue();
+            String currUuid = characteristic.getUuid().toString();
+            byte tmp2 = (byte) 0;
+            for (int i = 0; i < elecChars.length; i++){
+                if (elecChars[i][0].equals(currUuid)){
+                    tmp2 = (byte) (int) elecChars[i][1];
+                }
+            }
+            byte [] handle = {tmp2};
+            byte[] packet = new byte[handle.length + values.length];
+            System.arraycopy(handle, 0, packet, 0, handle.length);
+            System.arraycopy(values, 0, packet, handle.length, values.length);
             Log.d("DATA", packet.toString());
             Log.d("DATA", Integer.toString(packet.length));
             Streamer streamer = new Streamer();
@@ -301,15 +324,7 @@ public class BluetoothLeService extends Service {
     }
 
     public void museSetup(){
-        //list of chars we want to write to
-        String charStreamUUID = "273e0001-4c4d-454d-96be-f03bac821358"; //write preset to this
 
-        String charTP9UUID = "273e0003-4c4d-454d-96be-f03bac821358";
-        String charAF7UUID = "273e0004-4c4d-454d-96be-f03bac821358";
-        String charAF8UUID = "273e0005-4c4d-454d-96be-f03bac821358";
-        String charTP10UUID = "273e0006-4c4d-454d-96be-f03bac821358";
-        String charRightAuxUUID = "273e0007-4c4d-454d-96be-f03bac821358";
-        List elecChars = Arrays.asList(charAF7UUID, charAF8UUID, charRightAuxUUID, charTP9UUID, charTP10UUID);
 
         //we have to setup the muse notifications and proper preset
         List serve = getSupportedGattServices();
@@ -320,8 +335,8 @@ public class BluetoothLeService extends Service {
             ArrayList chars = giveCharacteristics(currServe);
             for (int j = 0; j < chars.size(); j++){
                 BluetoothGattCharacteristic currChar = (BluetoothGattCharacteristic) chars.get(j);
-                for (int k = 0; k < elecChars.size(); k++){
-                    if (elecChars.get(k).equals(currChar.getUuid().toString())) {
+                for (int k = 0; k < elecChars.length; k++){
+                    if (elecChars[k][0].equals(currChar.getUuid().toString())) {
                         mBluetoothGatt.setCharacteristicNotification(currChar, true); //enable on android
                         BluetoothGattDescriptor descriptor = currChar.getDescriptor(UUID.fromString(SampleGattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
                         while (lock == true) {
