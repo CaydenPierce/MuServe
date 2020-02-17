@@ -16,15 +16,6 @@
 -->
 
 <resources>
-    <string name="app_name">BluetoothLeGatt</string>
-    <string name="intro_message">
-        <![CDATA[
-        
-            
-            This sample demonstrates how to use the Bluetooth LE Generic Attribute Profile (GATT)
-            to transmit arbitrary data between devices.
-            
-        
-        ]]>
-    </string>
+    <string name="app_name">MuServe</string>
+    <string name="intro_message">Connect to the Muse EEG system and stream data over the internet.</string>
 </resources>

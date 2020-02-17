@@ -16,6 +16,10 @@
 
 package com.example.android.bluetoothlegatt;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -31,7 +35,10 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
 import android.provider.ContactsContract;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.view.View;
+import android.widget.RemoteViews;
 
 import java.lang.reflect.Array;
 import java.math.BigInteger;
@@ -86,10 +93,83 @@ public class BluetoothLeService extends Service {
 
     public Boolean lock = false; //check if bluetooth writer/reader is locked before trying to read/write
     public int attempts = 0; //number of attempts to keep retrying connection to bluetooth
-    public Boolean tryStill = false; //should we keep retrying to connect if attempt is not over max tries?
-
+    public Boolean tryStill = false; //should we keep retrying to connect, this option is for "Croc'ing" - reconnecting on disconnec
+    private NotificationManager mNotificationManager; //manage notifications...
+    private final static String FOREGROUND_CHANNEL_ID = "MuServeAppStreamerService";
     public DatagramSocket udpSocket; //creating the socket here... this should be moved to its own service for understandability and to expand this to TCP
 
+    @Override
+    public void onDestroy(){
+        close();
+        stopForeground(true);
+        stopSelf();
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        //create socket connection
+        try {
+            udpSocket = new DatagramSocket(9999);
+        } catch (Exception e){
+            Log.e("UUID", e.toString());
+        }
+
+    }
+
+
+    private Notification prepareNotification() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+                mNotificationManager.getNotificationChannel(FOREGROUND_CHANNEL_ID) == null) {
+            // The user-visible name of the channel.
+            CharSequence name = "Test"; //getString(R.string.text_value_radio_notification);
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel mChannel = new NotificationChannel(FOREGROUND_CHANNEL_ID, name, importance);
+            mChannel.enableVibration(false);
+            mNotificationManager.createNotificationChannel(mChannel);
+        }
+        Intent notificationIntent = new Intent(this, DeviceControlActivity.class);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.HONEYCOMB) {
+            notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        } else {
+            notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder lNotificationBuilder;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            lNotificationBuilder = new NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID);
+        } else {
+            lNotificationBuilder = new NotificationCompat.Builder(this);
+        }
+        lNotificationBuilder
+                .setContentTitle("Title")
+                .setOnlyAlertOnce(true)
+                .setOngoing(true)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            lNotificationBuilder.setVisibility(Notification.VISIBILITY_PUBLIC);
+        }
+        return lNotificationBuilder.build();
+
+    }
+
+
+    @Override
+    public int onStartCommand (Intent intent, int flags, int startId){
+        if (intent == null) {
+            stopForeground(true);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
+        startForeground(69696969, prepareNotification());
+        return START_NOT_STICKY;
+
+    }
 
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
@@ -98,7 +178,7 @@ public class BluetoothLeService extends Service {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             String intentAction;
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                tryStill = false;
+                //tryStill = false;
                 intentAction = ACTION_GATT_CONNECTED;
                 mConnectionState = STATE_CONNECTED;
                 broadcastUpdate(intentAction);
@@ -112,7 +192,7 @@ public class BluetoothLeService extends Service {
                 intentAction = ACTION_GATT_DISCONNECTED;
                 mConnectionState = STATE_DISCONNECTED;
                 Log.i(TAG, "Disconnected from GATT server.");
-                if (attempts < 3 && tryStill.equals(true)) {
+                if (tryStill.equals(true)) {
                     oldConn(mBluetoothDeviceAddress);
                     broadcastUpdate(intentAction);
                 }
@@ -219,13 +299,6 @@ public class BluetoothLeService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
-        //create socket connection
-        try {
-            udpSocket = new DatagramSocket(9999);
-        } catch (Exception e){
-            Log.e("UUID", e.toString());
-        }
-
         return mBinder;
     }
 
@@ -234,7 +307,7 @@ public class BluetoothLeService extends Service {
         // After using a given device, you should make sure that BluetoothGatt.close() is called
         // such that resources are cleaned up properly.  In this particular example, close() is
         // invoked when the UI is disconnected from the Service.
-        close();
+        //close();
         return super.onUnbind(intent);
     }
 
@@ -377,11 +450,13 @@ public class BluetoothLeService extends Service {
      * callback.
      */
     public void disconnect() {
+        tryStill = false;
         if (mBluetoothAdapter == null || mBluetoothGatt == null) {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
         }
         mBluetoothGatt.disconnect();
+        close();
     }
 
     /**

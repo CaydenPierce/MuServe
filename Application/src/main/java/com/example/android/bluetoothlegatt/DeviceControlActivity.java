@@ -35,6 +35,7 @@ import android.widget.ExpandableListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
 
+import java.net.Inet4Address;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -81,7 +82,7 @@ public class DeviceControlActivity extends Activity {
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            mBluetoothLeService = null;
+            //mBluetoothLeService = null;
         }
     };
 
@@ -171,18 +172,23 @@ public class DeviceControlActivity extends Activity {
 
         getActionBar().setTitle(mDeviceName);
         getActionBar().setDisplayHomeAsUpEnabled(true);
+        Intent startIntent = new Intent(this, BluetoothLeService.class);
+        startService(startIntent);
+        /*
+        Intent bleService = new Intent(this, BluetoothLeService.class);
+        getApplicationContext().startForegroundService(bleService); //start up the service first so it stays alive after shutting down the app*/
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
-        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
+        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE); //then bind to the service so we can communicate with it
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
-        if (mBluetoothLeService != null) {
+        /*if (mBluetoothLeService != null) {
             final boolean result = mBluetoothLeService.connect(mDeviceAddress);
             Log.d(TAG, "Connect request result=" + result);
-        }
+        }*/
     }
 
     @Override
@@ -195,7 +201,7 @@ public class DeviceControlActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         unbindService(mServiceConnection);
-        mBluetoothLeService = null;
+        //mBluetoothLeService = null;
     }
 
     @Override
@@ -219,6 +225,9 @@ public class DeviceControlActivity extends Activity {
                 return true;
             case R.id.menu_disconnect:
                 mBluetoothLeService.disconnect();
+                Intent myService = new Intent(this, BluetoothLeService.class);
+                stopService(myService);
+                finish();
                 return true;
             case android.R.id.home:
                 onBackPressed();
