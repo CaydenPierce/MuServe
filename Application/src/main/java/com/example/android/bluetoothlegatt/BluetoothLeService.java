@@ -100,9 +100,12 @@ public class BluetoothLeService extends Service {
 
     @Override
     public void onDestroy(){
-        close();
+        Log.d("UUID", "destroying streamer service");
+        tryStill = false;
         stopForeground(true);
-        stopSelf();
+        disconnect();
+        close();
+        this.stopSelf();
     }
 
     @Override
@@ -160,6 +163,7 @@ public class BluetoothLeService extends Service {
 
     @Override
     public int onStartCommand (Intent intent, int flags, int startId){
+        Log.d("UUID", "starting ble");
         if (intent == null) {
             stopForeground(true);
             stopSelf();
@@ -182,16 +186,16 @@ public class BluetoothLeService extends Service {
                 intentAction = ACTION_GATT_CONNECTED;
                 mConnectionState = STATE_CONNECTED;
                 broadcastUpdate(intentAction);
-                Log.i(TAG, "Connected to GATT server.");
+                Log.i("UUID", "Connected to GATT server.");
                 // Attempts to discover services after successful connection.
-                Log.i(TAG, "Attempting to start service discovery:" +
+                Log.i("UUID", "Attempting to start service discovery:" +
                         mBluetoothGatt.discoverServices());
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 attempts++;
                 intentAction = ACTION_GATT_DISCONNECTED;
                 mConnectionState = STATE_DISCONNECTED;
-                Log.i(TAG, "Disconnected from GATT server.");
+                Log.i("UUID", "Disconnected from GATT server.");
                 if (tryStill.equals(true)) {
                     oldConn(mBluetoothDeviceAddress);
                     broadcastUpdate(intentAction);
@@ -455,7 +459,6 @@ public class BluetoothLeService extends Service {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
         }
-        mBluetoothGatt.disconnect();
         close();
     }
 
@@ -467,8 +470,10 @@ public class BluetoothLeService extends Service {
         if (mBluetoothGatt == null) {
             return;
         }
+        mBluetoothGatt.disconnect();
         mBluetoothGatt.close();
         mBluetoothGatt = null;
+        udpSocket.close();
     }
 
     /**

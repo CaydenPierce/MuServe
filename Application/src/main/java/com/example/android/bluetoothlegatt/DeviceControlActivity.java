@@ -185,6 +185,9 @@ public class DeviceControlActivity extends Activity {
     protected void onResume() {
         super.onResume();
         registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+
+        //Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
+        //bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE); //then bind to the service so we can communicate with it
         /*if (mBluetoothLeService != null) {
             final boolean result = mBluetoothLeService.connect(mDeviceAddress);
             Log.d(TAG, "Connect request result=" + result);
@@ -200,7 +203,7 @@ public class DeviceControlActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unbindService(mServiceConnection);
+        //unbindService(mServiceConnection);
         //mBluetoothLeService = null;
     }
 
@@ -225,6 +228,7 @@ public class DeviceControlActivity extends Activity {
                 return true;
             case R.id.menu_disconnect:
                 mBluetoothLeService.disconnect();
+                unbindService(mServiceConnection);
                 Intent myService = new Intent(this, BluetoothLeService.class);
                 stopService(myService);
                 finish();
