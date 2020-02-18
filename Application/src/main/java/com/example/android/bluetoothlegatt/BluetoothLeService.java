@@ -102,6 +102,7 @@ public class BluetoothLeService extends Service {
     private NotificationManager mNotificationManager; //manage notifications...
     private final static String FOREGROUND_CHANNEL_ID = "MuServeAppStreamerService";
     public DatagramSocket udpSocket; //creating the socket here... this should be moved to its own service for understandability and to expand this to TCP
+    String csvName;
 
     @Override
     public void onDestroy(){
@@ -123,7 +124,7 @@ public class BluetoothLeService extends Service {
         } catch (Exception e){
             Log.e("UUID", e.toString());
         }
-
+        csvName = Long.toString(System.currentTimeMillis() / 1000);
     }
 
 
@@ -243,23 +244,20 @@ public class BluetoothLeService extends Service {
             broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
             byte [] values = characteristic.getValue();
             String currUuid = characteristic.getUuid().toString();
-            byte tmp2 = (byte) 0;
+            int handle = 0;
             for (int i = 0; i < elecChars.length; i++){
                 if (elecChars[i][0].equals(currUuid)){
-                    tmp2 = (byte) (int) elecChars[i][1];
+                    handle = (int) elecChars[i][1];
                 }
             }
-            byte [] handle = {tmp2};
-            byte[] packet = new byte[handle.length + values.length];
-            System.arraycopy(handle, 0, packet, 0, handle.length);
-            System.arraycopy(values, 0, packet, handle.length, values.length);
-            Log.d("DATA", packet.toString());
-            Log.d("DATA", Integer.toString(packet.length));
+            
             if(shouldStream) {
-                Streamer streamer = new Streamer(ipAddress, ipPortNum);
-                Object[] obj = new Object[2];
-                obj[0] = udpSocket;
-                obj[1] = packet;
+                Streamer streamer = new Streamer(getApplicationContext(), ipAddress, ipPortNum);
+								Object[] obj = new Object[4];
+								obj[0] = udpSocket;
+								obj[1] = values;
+								obj[2] = csvName;
+								obj[3] = handle;
                 streamer.execute(obj);
             }
         }
