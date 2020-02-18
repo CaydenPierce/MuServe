@@ -20,13 +20,15 @@ public class Streamer extends AsyncTask<Object, Void, Void> {
     int port = 9999;
     //final String ip = "192.168.50.132"; //luke
     String ip = "192.168.50.172"; //cayden desktop
+    int id = 1; //cayden desktop
 
     private Context mContext;
-    Streamer(Context context, String ipString,int portNum){
+    Streamer(Context context, String ipString,int portNum, int idInt){
         super();
         mContext = context;
         port=portNum;
         ip=ipString;
+        id=idInt;
     }
 
     @Override
@@ -40,12 +42,15 @@ public class Streamer extends AsyncTask<Object, Void, Void> {
     private void sendPacket(Object socket, Object data, Object handle){
         try {
             byte [] myHandle = {(byte) ((int) handle)};
+            Log.d("yeah", Integer.toString(id));
+            byte [] mySession = {(byte) ((int) id)};
             byte[] buf = (byte[]) data;
             InetAddress serverAddr = InetAddress.getByName(ip);
 
-            byte[] toSend = new byte[myHandle.length + buf.length];
-            System.arraycopy(myHandle, 0, toSend, 0, myHandle.length);
-            System.arraycopy(buf, 0, toSend, myHandle.length, buf.length);
+            byte[] toSend = new byte[mySession.length + myHandle.length + buf.length];
+            System.arraycopy(mySession, 0, toSend, 0, mySession.length);
+            System.arraycopy(myHandle, 0, toSend, mySession.length, myHandle.length);
+            System.arraycopy(buf, 0, toSend, myHandle.length+mySession.length, buf.length);
 
             DatagramPacket packet = new DatagramPacket(toSend, toSend.length,serverAddr, port);
             ((DatagramSocket) socket).send(packet);

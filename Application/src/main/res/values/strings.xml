@@ -18,6 +18,7 @@
     <string name="label_data">Data:</string>
     <string name="label_device_address">Device address:</string>
     <string name="label_port">IP Port:</string>
+    <string name="sessionid">Session Id:</string>
     <string name="label_ip_address">IP Address:</string>
     <string name="label_should_stream">Stream?</string>
     <string name="label_state">State:</string>

@@ -95,6 +95,7 @@ public class BluetoothLeService extends Service {
 
     public String ipAddress="";
     public int ipPortNum=9999;
+    public int id=1;
 
     public Boolean lock = false; //check if bluetooth writer/reader is locked before trying to read/write
     public int attempts = 0; //number of attempts to keep retrying connection to bluetooth
@@ -252,7 +253,7 @@ public class BluetoothLeService extends Service {
             }
             
             if(shouldStream) {
-                Streamer streamer = new Streamer(getApplicationContext(), ipAddress, ipPortNum);
+                Streamer streamer = new Streamer(getApplicationContext(), ipAddress, ipPortNum, id);
 								Object[] obj = new Object[4];
 								obj[0] = udpSocket;
 								obj[1] = values;
@@ -326,9 +327,10 @@ public class BluetoothLeService extends Service {
         shouldStream=stream;
     }
 
-    public void setIp(String addr,int port){
+    public void setIp(String addr,int port, int idInt){
         ipAddress=addr;
         ipPortNum=port;
+        id=idInt;
     }
 
     /**
@@ -336,10 +338,11 @@ public class BluetoothLeService extends Service {
      *
      * @return Return true if the initialization is successful.
      */
-    public boolean initialize(String addr, int port) {
+    public boolean initialize(String addr, int port, int idInt) {
 
         ipAddress=addr;
         ipPortNum=port;
+        id=idInt;
         // For API level 18 and above, get a reference to BluetoothAdapter through
         // BluetoothManager.
         if (mBluetoothManager == null) {

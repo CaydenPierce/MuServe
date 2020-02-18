@@ -61,6 +61,7 @@ public class DeviceControlActivity extends Activity {
     private TextView mDataField;
     private TextView mIpAddressField;
     private EditText mIpPortField;
+    private EditText mIdField;
     private CheckBox mStreamCheckBox;
     private Button mUpdateIp;
 
@@ -86,8 +87,10 @@ public class DeviceControlActivity extends Activity {
             String address=mIpAddressField.getText().toString();
 
             int port = Integer.parseInt(mIpPortField.getText().toString());
+            int id = Integer.parseInt(mIdField.getText().toString());
+            Log.d("yeah", "this" + Integer.toString(id) + Integer.toString(port));
 
-            if (!mBluetoothLeService.initialize(address,port)) {
+            if (!mBluetoothLeService.initialize(address,port,id)) {
                 Log.e(TAG, "Unable to initialize Bluetooth");
                 finish();
             }
@@ -176,6 +179,7 @@ public class DeviceControlActivity extends Activity {
 
         mIpAddressField = (TextView) findViewById(R.id.ip_address);
         mIpPortField = (EditText) findViewById(R.id.ip_port);
+        mIdField= (EditText) findViewById(R.id.session_id);
         mStreamCheckBox = (CheckBox) findViewById(R.id.stream_checkbox);
         mStreamCheckBox.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -196,7 +200,8 @@ public class DeviceControlActivity extends Activity {
                 if(mBluetoothLeService!=null){
                     String address=mIpAddressField.getText().toString();
                     int port = Integer.parseInt(mIpPortField.getText().toString());
-                    mBluetoothLeService.setIp(address,port);
+                    int id = Integer.parseInt(mIdField.getText().toString());
+                    mBluetoothLeService.setIp(address,port, id);
                 }
             }
         });
