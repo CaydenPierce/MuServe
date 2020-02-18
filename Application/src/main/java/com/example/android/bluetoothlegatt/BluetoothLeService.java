@@ -61,6 +61,8 @@ public class BluetoothLeService extends Service {
     private BluetoothGatt mBluetoothGatt;
     private int mConnectionState = STATE_DISCONNECTED;
 
+    private boolean shouldStream=true;
+
     private static final int STATE_DISCONNECTED = 0;
     private static final int STATE_CONNECTING = 1;
     private static final int STATE_CONNECTED = 2;
@@ -90,6 +92,9 @@ public class BluetoothLeService extends Service {
     public Object [] charRightAuxUUID = {"273e0007-4c4d-454d-96be-f03bac821358", 35};
 
     public Object [][] elecChars = {charAF7UUID, charAF8UUID, charRightAuxUUID, charTP9UUID, charTP10UUID};
+
+    public String ipAddress="";
+    public int ipPortNum=9999;
 
     public Boolean lock = false; //check if bluetooth writer/reader is locked before trying to read/write
     public int attempts = 0; //number of attempts to keep retrying connection to bluetooth
@@ -250,11 +255,13 @@ public class BluetoothLeService extends Service {
             System.arraycopy(values, 0, packet, handle.length, values.length);
             Log.d("DATA", packet.toString());
             Log.d("DATA", Integer.toString(packet.length));
-            Streamer streamer = new Streamer();
-            Object[] obj = new Object[2];
-            obj[0] = udpSocket;
-            obj[1] = packet;
-            streamer.execute(obj);
+            if(shouldStream) {
+                Streamer streamer = new Streamer(ipAddress, ipPortNum);
+                Object[] obj = new Object[2];
+                obj[0] = udpSocket;
+                obj[1] = packet;
+                streamer.execute(obj);
+            }
         }
     };
 
@@ -317,13 +324,24 @@ public class BluetoothLeService extends Service {
 
     private final IBinder mBinder = new LocalBinder();
 
+    public void setShouldStream(boolean stream){
+        shouldStream=stream;
+    }
+
+    public void setIp(String addr,int port){
+        ipAddress=addr;
+        ipPortNum=port;
+    }
+
     /**
      * Initializes a reference to the local Bluetooth adapter.
      *
      * @return Return true if the initialization is successful.
      */
-    public boolean initialize() {
+    public boolean initialize(String addr, int port) {
 
+        ipAddress=addr;
+        ipPortNum=port;
         // For API level 18 and above, get a reference to BluetoothAdapter through
         // BluetoothManager.
         if (mBluetoothManager == null) {
