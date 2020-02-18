@@ -31,9 +31,14 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ExpandableListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
+
+import org.w3c.dom.Text;
 
 import java.net.Inet4Address;
 import java.util.ArrayList;
@@ -54,6 +59,11 @@ public class DeviceControlActivity extends Activity {
 
     private TextView mConnectionState;
     private TextView mDataField;
+    private TextView mIpAddressField;
+    private EditText mIpPortField;
+    private CheckBox mStreamCheckBox;
+    private Button mUpdateIp;
+
     private String mDeviceName;
     private String mDeviceAddress;
     private ExpandableListView mGattServicesList;
@@ -72,7 +82,12 @@ public class DeviceControlActivity extends Activity {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder service) {
             mBluetoothLeService = ((BluetoothLeService.LocalBinder) service).getService();
-            if (!mBluetoothLeService.initialize()) {
+
+            String address=mIpAddressField.getText().toString();
+
+            int port = Integer.parseInt(mIpPortField.getText().toString());
+
+            if (!mBluetoothLeService.initialize(address,port)) {
                 Log.e(TAG, "Unable to initialize Bluetooth");
                 finish();
             }
@@ -159,6 +174,35 @@ public class DeviceControlActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.gatt_services_characteristics);
 
+        mIpAddressField = (TextView) findViewById(R.id.ip_address);
+        mIpPortField = (EditText) findViewById(R.id.ip_port);
+        mStreamCheckBox = (CheckBox) findViewById(R.id.stream_checkbox);
+        mStreamCheckBox.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(mBluetoothLeService!=null){
+                    if(mStreamCheckBox.isChecked()){
+                        mBluetoothLeService.setShouldStream(true);
+                    }else{
+                        mBluetoothLeService.setShouldStream(false);
+                    }
+                }
+            }
+        });
+        mUpdateIp = (Button) findViewById(R.id.ip_update_button);
+        mUpdateIp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(mBluetoothLeService!=null){
+                    String address=mIpAddressField.getText().toString();
+                    int port = Integer.parseInt(mIpPortField.getText().toString());
+                    mBluetoothLeService.setIp(address,port);
+                }
+            }
+        });
+
+
+
         final Intent intent = getIntent();
         mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
         mDeviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
@@ -172,13 +216,7 @@ public class DeviceControlActivity extends Activity {
 
         getActionBar().setTitle(mDeviceName);
         getActionBar().setDisplayHomeAsUpEnabled(true);
-        Intent startIntent = new Intent(this, BluetoothLeService.class);
-        startService(startIntent);
-        /*
-        Intent bleService = new Intent(this, BluetoothLeService.class);
-        getApplicationContext().startForegroundService(bleService); //start up the service first so it stays alive after shutting down the app*/
-        Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
-        bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE); //then bind to the service so we can communicate with it
+
     }
 
     @Override
@@ -224,7 +262,14 @@ public class DeviceControlActivity extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch(item.getItemId()) {
             case R.id.menu_connect:
-                mBluetoothLeService.connect(mDeviceAddress);
+                Intent startIntent = new Intent(this, BluetoothLeService.class);
+                startService(startIntent);
+                /*
+                Intent bleService = new Intent(this, BluetoothLeService.class);
+                getApplicationContext().startForegroundService(bleService); //start up the service first so it stays alive after shutting down the app*/
+                Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
+                bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE); //then bind to the service so we can communicate with it
+                //mBluetoothLeService.connect(mDeviceAddress);
                 return true;
             case R.id.menu_disconnect:
                 mBluetoothLeService.disconnect();

@@ -12,9 +12,16 @@ import java.net.SocketException;
 import java.net.URL;
 
 public class Streamer extends AsyncTask<Object, Void, Void> {
-    final int port = 9999;
+    int port = 9999;
     //final String ip = "192.168.50.132"; //luke
-    final String ip = "192.168.50.172"; //cayden desktop
+    String ip = "192.168.50.172"; //cayden desktop
+
+    Streamer(String ipString,int portNum){
+        super();
+        port=portNum;
+        ip=ipString;
+    }
+
     @Override
     protected Void doInBackground(Object... params) { //Object is an an array with the socket at the first index and the byte array as the second index
         Log.d("UUID", "Sending packet now.");
