@@ -1,6 +1,8 @@
 # MuServe: Android app to connect to Muse EEG
 
-The app can connect to a Muse EEG device, save the data locally to a CSV and stream to an arbitrary IP address/port using UDP. This was the result of a 2 day hack at MannLab in Toronto.
+The app can connect to a Muse EEG device, save the data locally to a CSV and stream to an arbitrary IP address/port using UDP.   
+
+This was the result of a 2 day hack at MannLab in Toronto.
 
 ## How
 
